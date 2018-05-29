@@ -1,0 +1,61 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Mon May 21 21:48:38 2018
+
+@author: Алена
+"""
+
+import numpy as np
+import pandas as pd
+import chardet
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import train_test_split
+import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve 
+import ml_metrics
+
+
+with open('data.csv', 'rb') as f:
+    result = chardet.detect(f.read()) 
+
+data = pd.read_csv('data.csv', sep=';' , encoding=result['encoding'])
+
+train = data.loc[:,'f1':'f7'].values
+print(train[:3])
+
+target = data['f8'].values
+print(target[:5])
+
+
+models = []
+models.append(RandomForestClassifier(n_estimators=165, max_depth=50,
+                                     criterion='entropy'))
+models.append(GradientBoostingClassifier(max_depth=50))
+models.append(KNeighborsClassifier(n_neighbors=20))
+models.append(GaussianNB())
+
+
+TRNtrain, TRNtest, TARtrain, TARtest = train_test_split(train, target,
+                                            test_size=0.15, random_state=0)
+
+plt.figure(figsize=(10, 10)) 
+for model in models:
+    model.fit(TRNtrain, TARtrain)
+    pred_scr = model.predict_proba(TRNtest)[:, 1]
+    fpr, tpr, thresholds = roc_curve(TARtest, pred_scr)
+    roc_auc = ml_metrics.auc(TARtest, pred_scr)
+    md = str(model)
+    md = md[:md.find('(')]
+    plt.plot(fpr, tpr, label='ROC fold %s (auc = %0.2f)' % (md, roc_auc))
+
+plt.plot([0, 1], [0, 1], '--', color=(0.6, 0.6, 0.6))
+#plt.xlim([0, 1])
+#plt.ylim([0, 1])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver operating characteristic example')
+plt.legend(loc="lower right")
+plt.show()
